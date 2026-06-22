@@ -1,0 +1,5 @@
+# EMBEDHUNT AI — API namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: embedhunt

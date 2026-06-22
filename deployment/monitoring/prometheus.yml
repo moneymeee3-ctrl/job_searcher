@@ -1,0 +1,19 @@
+# EMBEDHUNT AI — Prometheus scrape config.
+# Note: the API exposes /health and /health/ready today. Add a /metrics endpoint
+# (prometheus-fastapi-instrumentator) to enable rich app metrics; this config is
+# ready for that and meanwhile blackbox-probes the health endpoint.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "embedhunt-api"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["embedhunt-api:80"]
+
+  - job_name: "embedhunt-api-health"
+    metrics_path: /health
+    scheme: http
+    static_configs:
+      - targets: ["embedhunt-api:80"]

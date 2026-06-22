@@ -1,0 +1,28 @@
+# EMBEDHUNT AI — non-secret config + secret template.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: embedhunt-config
+  namespace: embedhunt
+data:
+  APP_ENV: "production"
+  PORT: "8000"
+  REDIS_URL: "redis://embedhunt-redis:6379/0"
+  CELERY_BROKER_URL: "redis://embedhunt-redis:6379/1"
+  CELERY_RESULT_BACKEND: "redis://embedhunt-redis:6379/2"
+  CORS_ORIGINS: "https://app.embedhunt.ai"
+  FEATURE_AI_MATCHING: "true"
+  FEATURE_INTERVIEW_GEN: "true"
+  FEATURE_AUTO_APPLY: "false"
+---
+# Create the real secret with `kubectl create secret generic embedhunt-secrets ...`.
+# This manifest is a TEMPLATE — do NOT commit real values. base64 placeholders only.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: embedhunt-secrets
+  namespace: embedhunt
+type: Opaque
+stringData:
+  SECRET_KEY: "REPLACE_WITH_STRONG_SECRET_MIN_32_CHARS"
+  DATABASE_URL: "postgresql+asyncpg://embedhunt:REPLACE@embedhunt-postgres:5432/embedhunt"

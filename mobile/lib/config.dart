@@ -8,7 +8,7 @@ class AppConfig {
   /// to reach the host machine's localhost.
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8000',
+    defaultValue: 'http://192.168.31.169:8000',
   );
 
   static const String apiV1 = '$apiBaseUrl/api/v1';

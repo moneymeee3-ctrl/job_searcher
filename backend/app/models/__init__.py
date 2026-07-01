@@ -7,6 +7,9 @@ from app.models.company import Company
 from app.models.notification import Notification, NotificationType, NotificationChannel
 from app.models.roadmap import LearningRoadmap
 from app.models.interview import InterviewSession
+from app.models.career_twin import CareerTwin
+from app.models.discovered_job import DiscoveredJob
 __all__ = ["User","Resume","ResumeStatus","CandidateProfile","Application","ApplicationStatus",
            "ApplicationOutcome","JobRecommendation","MatchTier","Company","Notification",
-           "NotificationType","NotificationChannel","LearningRoadmap","InterviewSession"]
+           "NotificationType","NotificationChannel","LearningRoadmap","InterviewSession","CareerTwin",
+           "DiscoveredJob"]

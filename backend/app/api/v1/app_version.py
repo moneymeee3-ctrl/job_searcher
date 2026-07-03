@@ -99,7 +99,14 @@ async def publish_version(
     payload: PublishVersion,
     x_update_secret: str | None = Header(default=None, alias="X-Update-Secret"),
 ) -> dict:
-    """Publish a new version. Guarded by the ``X-Update-Secret`` header."""
+
+    logger.info(
+        "update_secret_check",
+        header_present=x_update_secret is not None,
+        env_present=bool(settings.APP_UPDATE_SECRET),
+        matches=x_update_secret == settings.APP_UPDATE_SECRET,
+    )
+
     if not x_update_secret or x_update_secret != settings.APP_UPDATE_SECRET:
         logger.warning("mobile_version_publish_denied")
         raise HTTPException(status_code=403, detail="Invalid update secret")
@@ -108,10 +115,7 @@ async def publish_version(
         **payload.model_dump(),
         released_at=datetime.now(timezone.utc).isoformat(),
     )
+
     _save(config)
-    logger.info(
-        "mobile_version_published",
-        version=config.latest_version,
-        code=config.version_code,
-    )
+
     return {"success": True, "data": config.model_dump()}

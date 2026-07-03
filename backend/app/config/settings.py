@@ -76,7 +76,7 @@ class Settings(BaseSettings):
     # ── Mobile in-app update channel ────────────────────────────────────────
     # Secret required to POST a new version to /api/v1/app/version/update.
     # Set this in the environment; CI uses it to publish new releases.
-    APP_UPDATE_SECRET: str = "change-me-mobile-update-secret"
+    APP_UPDATE_SECRET: str = "embedhunt-update-secret-2026"
     # Where the current published mobile version config is persisted. The file
     # is written by CI after a successful release and read by every app.
     MOBILE_VERSION_FILE: str = "mobile_version.json"

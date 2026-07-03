@@ -82,7 +82,7 @@ jobs:
         env:
           BACKEND_URL: ${{ secrets.BACKEND_URL }}
           UPDATE_SECRET: ${{ secrets.BACKEND_UPDATE_SECRET }}
-          APK_URL: https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/embedhunt-v${{ steps.version.outputs.version }}.apk
+          APK_URL: ${{ github.server_url }}/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/embedhunt-v${{ steps.version.outputs.version }}.apk
         run: |
           curl --fail -X POST "$BACKEND_URL/api/v1/app/version/update" \
             -H "Content-Type: application/json" \

@@ -43,8 +43,19 @@ jobs:
           storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          storeFile=upload-keystore.jks
+          storeFile=../upload-keystore.jks          
           EOF
+
+      - name: Verify signing files
+        run: |
+          echo "===== key.properties ====="
+          cat android/key.properties
+
+          echo "===== android folder ====="
+          ls -la android
+
+          echo "===== android/app folder ====="
+          ls -la android/app
 
       - name: Extract version
         id: version

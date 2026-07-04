@@ -11,7 +11,8 @@ from app.models.career_twin import CareerTwin
 from app.models.discovered_job import DiscoveredJob
 from app.models.feedback import FeedbackEvent, FeedbackType
 from app.models.daily_checkin import DailyCheckin
+from app.models.app_version import AppVersion
 __all__ = ["User","Resume","ResumeStatus","CandidateProfile","Application","ApplicationStatus",
            "ApplicationOutcome","JobRecommendation","MatchTier","Company","Notification",
            "NotificationType","NotificationChannel","LearningRoadmap","InterviewSession","CareerTwin",
-           "DiscoveredJob","FeedbackEvent","FeedbackType","DailyCheckin"]
+           "DiscoveredJob","FeedbackEvent","FeedbackType","DailyCheckin","AppVersion"]

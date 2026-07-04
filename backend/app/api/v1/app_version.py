@@ -1,88 +1,20 @@
-"""EMBEDHUNT AI — Mobile app version / in-app update channel.
-
-The Flutter app polls ``GET /api/v1/app/version`` on launch and every 30
-minutes. When a newer ``version_code`` is published it prompts the user to
-download and install the new APK — no manual uninstall/reinstall.
-
-CI publishes new releases with ``POST /api/v1/app/version/update`` guarded by
-the ``X-Update-Secret`` header (``settings.APP_UPDATE_SECRET``).
-
-The active config is persisted to ``settings.MOBILE_VERSION_FILE`` so it
-survives across worker processes; if the file is missing the values fall back
-to the settings defaults.
-"""
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
-from pathlib import Path
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.logging import get_logger
 from app.config.settings import settings
+from app.database.session import get_db
+from app.models.app_version import AppVersion
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/app", tags=["App Update"])
-
-_VERSION_PATH = Path(settings.MOBILE_VERSION_FILE)
-
-
-class VersionConfig(BaseModel):
-    """The version payload served to and published by clients/CI."""
-
-    latest_version: str = Field(..., examples=["1.2.0"])
-    version_code: int = Field(..., ge=1, examples=[10200])
-    apk_url: str = ""
-    minimum_version: str = "1.0.0"
-    force_update: bool = False
-    release_notes: list[str] = Field(default_factory=list)
-    released_at: str = ""
-
-
-def _defaults() -> VersionConfig:
-    return VersionConfig(
-        latest_version=settings.MOBILE_LATEST_VERSION,
-        version_code=settings.MOBILE_VERSION_CODE,
-        apk_url=settings.MOBILE_APK_URL,
-        minimum_version=settings.MOBILE_MIN_SUPPORTED_VERSION,
-        force_update=False,
-        release_notes=[],
-        released_at="",
-    )
-
-
-def _load() -> VersionConfig:
-    try:
-        if _VERSION_PATH.exists():
-            raw = json.loads(_VERSION_PATH.read_text("utf-8"))
-            if "minimum_version" not in raw and "min_supported_version" in raw:
-                raw["minimum_version"] = raw.pop("min_supported_version")
-            if "force_update" not in raw and "mandatory" in raw:
-                raw["force_update"] = raw.pop("mandatory")
-            if isinstance(raw.get("release_notes"), str):
-                notes = raw["release_notes"].strip()
-                raw["release_notes"] = [notes] if notes else []
-            return VersionConfig(**raw)
-    except (OSError, ValueError, TypeError) as exc:
-        logger.warning("mobile_version_read_failed", error=str(exc))
-    return _defaults()
-
-
-def _save(config: VersionConfig) -> None:
-    try:
-        _VERSION_PATH.write_text(config.model_dump_json(indent=2), "utf-8")
-    except OSError as exc:
-        logger.error("mobile_version_write_failed", error=str(exc))
-        raise HTTPException(status_code=500, detail="Failed to persist version config")
-
-
-@router.get("/version", summary="Current published mobile app version")
-async def get_version() -> dict:
-    """Return the currently published version. Called by every running app."""
-    return _load().model_dump()
 
 
 class PublishVersion(BaseModel):
@@ -94,12 +26,36 @@ class PublishVersion(BaseModel):
     release_notes: list[str] = Field(default_factory=list)
 
 
-@router.post("/version/update", summary="Publish a new mobile version (CI only)")
+@router.get("/version")
+async def get_version(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(AppVersion).limit(1))
+    version = result.scalar_one_or_none()
+
+    if version is None:
+        version = AppVersion()
+        db.add(version)
+        await db.commit()
+        await db.refresh(version)
+
+    return {
+        "latest_version": version.latest_version,
+        "version_code": version.version_code,
+        "apk_url": version.apk_url,
+        "minimum_version": version.minimum_version,
+        "force_update": version.force_update,
+        "release_notes": version.release_notes,
+        "released_at": version.released_at.isoformat()
+        if version.released_at
+        else "",
+    }
+
+
+@router.post("/version/update")
 async def publish_version(
     payload: PublishVersion,
-    x_update_secret: str | None = Header(default=None, alias="X-Update-Secret"),
-) -> dict:
-
+    x_update_secret: str | None = Header(None, alias="X-Update-Secret"),
+    db: AsyncSession = Depends(get_db),
+):
     logger.info(
         "update_secret_check",
         header_present=x_update_secret is not None,
@@ -107,15 +63,37 @@ async def publish_version(
         matches=x_update_secret == settings.APP_UPDATE_SECRET,
     )
 
-    if not x_update_secret or x_update_secret != settings.APP_UPDATE_SECRET:
+    if x_update_secret != settings.APP_UPDATE_SECRET:
         logger.warning("mobile_version_publish_denied")
-        raise HTTPException(status_code=403, detail="Invalid update secret")
+        raise HTTPException(403, "Invalid update secret")
 
-    config = VersionConfig(
-        **payload.model_dump(),
-        released_at=datetime.now(timezone.utc).isoformat(),
-    )
+    result = await db.execute(select(AppVersion).limit(1))
+    version = result.scalar_one_or_none()
 
-    _save(config)
+    if version is None:
+        version = AppVersion()
+        db.add(version)
 
-    return {"success": True, "data": config.model_dump()}
+    version.latest_version = payload.latest_version
+    version.version_code = payload.version_code
+    version.apk_url = payload.apk_url
+    version.minimum_version = payload.minimum_version
+    version.force_update = payload.force_update
+    version.release_notes = payload.release_notes
+    version.released_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(version)
+
+    return {
+        "success": True,
+        "data": {
+            "latest_version": version.latest_version,
+            "version_code": version.version_code,
+            "apk_url": version.apk_url,
+            "minimum_version": version.minimum_version,
+            "force_update": version.force_update,
+            "release_notes": version.release_notes,
+            "released_at": version.released_at.isoformat(),
+        },
+    }

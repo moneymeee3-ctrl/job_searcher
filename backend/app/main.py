@@ -10,6 +10,7 @@ from app.config.logging import setup_logging, get_logger, set_correlation_id
 from app.core.lifecycle import lifespan
 from app.api.router import api_router
 
+
 setup_logging()
 logger = get_logger(__name__)
 
